@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Финансовый дашборд — Рафаэль</title>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#141925; --panel2:#1b2231; --line:#283248;
+    --txt:#e6ecf5; --muted:#8a97ad; --green:#3ddc84; --red:#ff5d6c;
+    --amber:#ffb84d; --blue:#5b9dff; --purple:#b388ff;
+    --shadow:0 4px 20px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.5;padding:24px;max-width:1180px;margin:0 auto;}
+  h1{font-size:22px;margin:0 0 2px}
+  h2{font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
+    margin:28px 0 12px;font-weight:600;border-bottom:1px solid var(--line);padding-bottom:8px}
+  .sub{color:var(--muted);font-size:13px}
+  .topbar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px}
+  .net{text-align:right}
+  .net .big{font-size:34px;font-weight:700;line-height:1.1}
+  .grid{display:grid;gap:14px}
+  .cards{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:16px;box-shadow:var(--shadow)}
+  .card .name{font-weight:600;font-size:15px;display:flex;justify-content:space-between;align-items:center}
+  .tag{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--panel2);
+    color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .val{font-size:24px;font-weight:700;margin:8px 0 2px}
+  .row{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:3px}
+  .row b{color:var(--txt);font-weight:600}
+  .pos{color:var(--green)} .neg{color:var(--red)} .neu{color:var(--muted)}
+  .prices{display:flex;flex-wrap:wrap;gap:14px;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:14px 16px;align-items:center}
+  .prices label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+  .prices input{width:96px;background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+    border-radius:8px;padding:6px 8px;font-size:14px;font-weight:600}
+  .hint{font-size:11px;color:var(--muted);margin-left:auto;max-width:260px;text-align:right}
+  /* LTV gauge */
+  .ltvwrap{display:flex;gap:24px;flex-wrap:wrap;align-items:center}
+  .gauge{flex:1;min-width:280px}
+  .bar{position:relative;height:26px;border-radius:14px;overflow:hidden;
+    background:linear-gradient(90deg,#1f7a45 0%,#2e8b57 38%,#caa12a 58%,#c0563f 78%,#b3322f 100%);
+    border:1px solid var(--line)}
+  .barfill{position:absolute;top:0;bottom:0;right:0;background:rgba(11,14,20,.72);}
+  .marker{position:absolute;top:-4px;width:3px;height:34px;background:#fff;border-radius:2px;box-shadow:0 0 6px #000}
+  .scale{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px}
+  .ltvnum{font-size:40px;font-weight:800;line-height:1}
+  .thresholds{font-size:12.5px;color:var(--muted)}
+  .thresholds div{padding:3px 0;border-bottom:1px dashed var(--line)}
+  /* table */
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  td.r,th.r{text-align:right}
+  .pill{display:inline-block;font-size:11px;padding:2px 9px;border-radius:20px;font-weight:600}
+  .pill.g{background:rgba(61,220,132,.15);color:var(--green)}
+  .pill.a{background:rgba(255,184,77,.15);color:var(--amber)}
+  .pill.r{background:rgba(255,93,108,.15);color:var(--red)}
+  .pill.b{background:rgba(91,157,255,.15);color:var(--blue)}
+  .alert{display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);
+    border-left:4px solid var(--amber);border-radius:10px;padding:12px 14px;margin-bottom:10px;font-size:14px}
+  .alert.crit{border-left-color:var(--red)}
+  .alert.ok{border-left-color:var(--green)}
+  .alert .ic{font-weight:800;font-size:16px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.two{grid-template-columns:1fr}.net{text-align:left}}
+  .countdown{font-size:30px;font-weight:800}
+  footer{margin-top:34px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:14px}
+  a{color:var(--blue)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1>Финансовый дашборд — Рафаэль</h1>
+    <div class="sub">Обновлено: <b>10 июля 2026</b> · база: снимок 7 июня · <span class="neu">не финансовая консультация</span></div>
+  </div>
+  <div class="net">
+    <div class="sub">Чистый капитал</div>
+    <div class="big" id="networth">—</div>
+    <div class="sub" id="networthsub">—</div>
+  </div>
+</div>
+
+<h2>Цены (живые, можно править вручную — всё пересчитается)</h2>
+<div class="prices">
+  <label>NVDA $<input type="number" id="p_nvda" value="204.27" step="0.01"></label>
+  <label>GOOGL $<input type="number" id="p_googl" value="358.89" step="0.01"></label>
+  <label>SOL $<input type="number" id="p_sol" value="79.01" step="0.01"></label>
+  <label>BTC $<input type="number" id="p_btc" value="63226" step="1"></label>
+  <button id="refreshbtn" onclick="fetchLivePrices()" style="background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;height:fit-content">🔄 Обновить</button>
+  <div class="hint" id="livestatus">Загрузка живых цен…</div>
+</div>
+
+<h2>Снимок портфеля</h2>
+<div class="grid cards" id="poscards"></div>
+
+<h2>Kamino — здоровье займа (LTV)</h2>
+<div class="card ltvwrap">
+  <div style="text-align:center;min-width:150px">
+    <div class="ltvnum" id="ltvval">—</div>
+    <div class="sub">текущий LTV</div>
+    <div class="pill g" id="ltvstatus" style="margin-top:8px">—</div>
+  </div>
+  <div class="gauge">
+    <div class="bar">
+      <div class="barfill" id="ltvfill"></div>
+      <div class="marker" id="ltvmark" style="left:0"></div>
+    </div>
+    <div class="scale"><span>0%</span><span>50%</span><span>67.42% ликвидация</span><span>100%</span></div>
+    <div class="thresholds" style="margin-top:12px">
+      <div>&lt; 50% — норма, ничего не делать</div>
+      <div>50–55% — внимание, готовить USDC</div>
+      <div>55–60% — отправить $50 USDC</div>
+      <div>60–65% — отправить $100 USDC, не докупать</div>
+      <div style="border:none">&gt; 65% — срочно закрыть позицию, погасить весь долг</div>
+    </div>
+    <div class="sub" style="margin-top:10px">Долг <b>148 USDC</b> · залог = GOOGLx + NVDAx (SOL не залог) · ликвидация коллатерала при −43% по NVDA+GOOGL синхронно.</div>
+  </div>
+</div>
+
+<h2>SOL — план выхода</h2>
+<div class="two">
+  <div class="card">
+    <div class="row"><span>Текущая цена SOL</span><b id="solnow">—</b></div>
+    <div class="row"><span>Заблокировано до</span><b>2 сентября 2026</b></div>
+    <div class="row"><span>До разлока</span><b><span class="countdown" id="soldays" style="font-size:18px">—</span> дн.</b></div>
+    <div class="row"><span>Кол-во (после процентов ~)</span><b>4.92 SOL</b></div>
+    <div class="sub" style="margin-top:10px">Предпочтение: гасить долг при <b>$100–150</b>, затем холд до жирной цели <b>$250–400</b>.</div>
+    <div class="alert" style="margin-top:12px;border-left-color:var(--amber)"><span class="ic">⚠</span><div>Все цели требуют разворота рынка (SOL сейчас ~$75). Дно цикла возможно в октябре — разлок 2 сент может прийти близко к минимуму.</div></div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table>
+      <tr><th>Стратегия</th><th class="r">Гасить долг</th><th class="r">Полный выход</th><th class="r">Итог</th></tr>
+      <tr><td>A · Спокойная</td><td class="r">$150</td><td class="r">$250</td><td class="r pos">~$982 <span class="sub">+391%</span></td></tr>
+      <tr><td>B · Уверенная</td><td class="r">$125</td><td class="r">$293</td><td class="r pos">~$1 096 <span class="sub">+448%</span></td></tr>
+      <tr><td>C · Жадная</td><td class="r">$100</td><td class="r">$400</td><td class="r pos">~$1 376 <span class="sub">+588%</span></td></tr>
+    </table>
+    <div class="sub" style="padding:12px 14px">От вложенных ~$200 в SOL.</div>
+  </div>
+</div>
+
+<h2>Дроп-фарминг</h2>
+<div class="card" style="padding:0;overflow:hidden">
+  <table>
+    <tr><th>Проект</th><th>Статус</th><th>Ключевое правило</th></tr>
+    <tr><td><b>xStocks</b> (xPoints)</td><td><span class="pill b">~49–52к · стрик 1.7x</span></td><td class="sub">Заходить на дашборд КАЖДЫЙ день (держать стрик). GOOGLx+NVDAx = 5x. TGE не раньше 2027.</td></tr>
+    <tr><td><b>HyENA</b></td><td><span class="pill a">Silver · ~28к · $4 USDe</span></td><td class="sub">Своего токена не будет — идёт в ENA. Программа кончается ~июнь. Забирать USDe еженедельно.</td></tr>
+    <tr><td><b>Kamino</b></td><td><span class="pill g">лендинг активен</span></td><td class="sub">Дропа нет (KMNO вышел в 2024). Держим ради 5x xPoints + проценты.</td></tr>
+  </table>
+</div>
+
+<h2>Рынок (контекст)</h2>
+<div class="grid cards">
+  <div class="card"><div class="name">BTC <span class="tag">crypto</span></div><div class="val" id="btcval">—</div><div class="row"><span>Фаза</span><b class="neg">медвежья</b></div><div class="row"><span>Настроение</span><b>экстремальный страх</b></div><div class="sub" style="margin-top:6px">Возможное дно цикла — октябрь 2026.</div></div>
+  <div class="card"><div class="name">SOL <span class="tag">crypto</span></div><div class="val" id="solval2">—</div><div class="row"><span>Поддержка</span><b class="neg">пробита $79–82</b></div><div class="sub" style="margin-top:6px">Навес от разлоков токенов.</div></div>
+  <div class="card"><div class="name">NVDA <span class="tag">AI акция</span></div><div class="val" id="nvdaval2">—</div><div class="row"><span>Рейтинг</span><b class="pos">Strong Buy</b></div><div class="row"><span>Таргет</span><b>$298</b></div><div class="sub" style="margin-top:6px">Хвостовой риск: Тайвань/TSMC — мониторить.</div></div>
+  <div class="card"><div class="name">GOOGL <span class="tag">акция</span></div><div class="val" id="googlval2">—</div><div class="sub" style="margin-top:6px">Berkshire +$10B.</div></div>
+</div>
+
+<h2>Алерты и действия</h2>
+<div id="alerts"></div>
+
+<h2>Ключевые даты</h2>
+<div class="card" style="padding:0;overflow:hidden">
+  <table>
+    <tr><th>Дата</th><th>Событие</th><th class="r">Осталось</th></tr>
+    <tr><td>~21–28 июля 2026</td><td>Отчёт GOOGL Q2</td><td class="r" id="d_googl">—</td></tr>
+    <tr><td>27 августа 2026</td><td>Отчёт NVDA Q2 (главное событие)</td><td class="r" id="d_nvda">—</td></tr>
+    <tr><td>2 сентября 2026</td><td>Разлок SOL в WhiteBit</td><td class="r" id="d_sol">—</td></tr>
+    <tr><td>Q3–Q4 2026</td><td>Возможный Ink TGE</td><td class="r sub">—</td></tr>
+  </table>
+</div>
+
+<h2>Макро-обзор: рынки, крипта, сырьё, экономика</h2>
+<div class="grid cards">
+  <div class="card">
+    <div class="name">Акции 📈</div>
+    <div class="sub" style="margin-top:6px">Dow на историческом хае, S&P 500 ~7483 (+1.8% за неделю), в шаге от пика. Сезон отчётов Q2 стартует 13 июля: ожидания EPS +23.3% г/г (лидеры — энергетика и техи), оценки даже повышались по ходу квартала — планка высокая. Слабый payrolls за июнь (57k против 115k) сдвинул дебаты по ставке, но CPI 4.2% держит ФРС Уорша в режиме «пауза/higher for longer»; рынок закладывает 63% вероятность ХАЙКА в сентябре. Риск: спекулятивный перегрев в ИИ-акциях (BofA таргет 7100 = −5%) + жёсткая ФРС при дорогом рынке.</div>
+  </div>
+  <div class="card">
+    <div class="name">Крипта 🪙</div>
+    <div class="sub" style="margin-top:6px">Отскок: 5 дней притоков в ETF подряд после худшего июня в истории (BTC-ETF сняли 10-дневную серию оттоков, +$221.7M за день). ETH +6.4% до ~$1719, у ключевой поддержки $1700, цели $1830–1889; резервы на биржах — рекордно низкие, стейкинг — рекордно высокий (BlackRock запустил staked-ETH продукт на $100M). SOL ~$79–81: съездил к $84, откат на фиксации, но структура бычья; токенизированные акции на Solana уже крупнее мемкоинов, Clearstream добавил SOL в институциональную кастодию (MiCA). Тон рынку задаёт смягчение риторики Уорша.</div>
+  </div>
+  <div class="card">
+    <div class="name">Золото и доллар 🪙💵</div>
+    <div class="sub" style="margin-top:6px">Золото >$4100 — тянет safe-haven спрос (эскалация с Ираном), давит ястребиная ФРС: рост реальных ставок = рост цены удержания золота, макро-фонды делевериджатся. Прогнозы полярные: JPM видит $6000 к концу года, медведи — $2900–3000. DXY ~101, у многомесячных пиков — «higher for longer» держит доллар сильным весь год.</div>
+  </div>
+  <div class="card">
+    <div class="name">Экономика и политика 🌍</div>
+    <div class="sub" style="margin-top:6px">Главный риск недели — Ближний Восток: новые удары США по Ирану, ответные атаки на Кувейт и Бахрейн — премия за риск в нефти/золоте растёт. Тарифная эскалация продолжается: угроза 100% тарифов странам с цифровыми налогами на US-tech, 50% на Бразилию с 1 авг. Глобальный рост 3.1% в 2026, но США замедляются до ~0.4% под грузом тарифов. Даты: FOMC 28 июля, промежуточные выборы 3 ноября.</div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:14px">
+  <div class="name">Глубокий разбор: Bitcoin ₿</div>
+  <div class="sub" style="margin-top:8px">Цена ~$63.2–64k, отскок к $64k после разворота ETF-потоков (+$221M 9 июля — снята 10-дневная серия оттоков). Техника: конструктивно выше $63 600; пробой $65 000–66 000 = бычий сдвиг, следующее сопротивление $69 000; слом $62 500 ставит восстановление под вопрос, ниже — риск $58–55k (активен bear flag ~$64.8k). Дневная структура всё ещё медвежья: цена ниже 50-дневной ($71.1k) и 200-дневной ($72k) MA. On-chain ключ — $69 000 (realized price краткосрочных держателей): возврат выше = недавние покупатели вышли из минуса, топливо для разворота; долгосрочные держатели аккумулируют — картина типична для формирования дна. Тезис: институциональная продажа выдохлась, ETF-спрос стабилизировался, но подтверждение разворота — только устойчивые притоки + закрепление над $65k. До этого — торговля диапазоном с рваной волатильностью.</div>
+</div>
+
+<footer>
+  Кошельки: Solana <code>31XoGp…Zph3u</code> · ETH/Arbitrum <code>0xeed2…0c49c</code>.<br>
+  Тон отчётов: прямой, в цифрах, сдерживать риск.<br>
+  Файл построен из финансового досье (снимок 7 июня 2026). Цены обновляй вручную в полях выше. Не лицензированная финансовая консультация.
+</footer>
+
+<script>
+const POS = [
+  {key:'googl', name:'GOOGLx', qty:0.5146, entry:385, place:'Kamino · залог 5x', price:'p_googl', collateral:true},
+  {key:'nvda',  name:'NVDAx',  qty:0.9212, entry:215, place:'Kamino · залог 5x', price:'p_nvda', collateral:true},
+  {key:'sol',   name:'SOL',    qty:4.7638798, entry:72.66, place:'WhiteBit 🔒 до 2 сент', price:'p_sol', collateral:false},
+];
+const DEBT = 148;
+const LIQ_LTV = 67.42;
+const TODAY = new Date('2026-07-08');
+function fmt(x){return '$'+x.toLocaleString('en-US',{minimumFractionDigits:0,maxFractionDigits:0,maximumFractionDigits:0});}
+function fmt2(x){return '$'+x.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function days(to){return Math.round((new Date(to)-TODAY)/86400000);}
+function pct(x){return (x>=0?'+':'')+x.toFixed(1)+'%';}
+function cls(x){return x>0?'pos':(x<0?'neg':'neu');}
+
+function getPrice(id){return parseFloat(document.getElementById(id).value)||0;}
+
+async function fetchYahooPrice(symbol){
+  const target='https://query1.finance.yahoo.com/v8/finance/chart/'+symbol;
+  // Yahoo Finance has no CORS headers, so we must go through a free proxy.
+  // Free proxies are flaky (frequent 5xx/timeouts), so try a couple with retries.
+  const proxies=[
+    'https://api.allorigins.win/raw?url='+encodeURIComponent(target),
+    'https://api.allorigins.win/raw?url='+encodeURIComponent(target), // retry same proxy once (transient errors are common)
+    'https://corsproxy.io/?url='+encodeURIComponent(target),
+  ];
+  let lastErr;
+  for(const url of proxies){
+    try{
+      const ctrl=new AbortController();
+      const t=setTimeout(()=>ctrl.abort(), 8000);
+      const res=await fetch(url, {signal:ctrl.signal});
+      clearTimeout(t);
+      if(!res.ok) throw new Error('http '+res.status);
+      const data=await res.json();
+      const p=data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+      if(!p) throw new Error('no price');
+      return p;
+    }catch(e){ lastErr=e; }
+  }
+  throw new Error('yahoo unavailable ('+(lastErr?.message||'?')+')');
+}
+
+async function fetchLivePrices(){
+  const statusEl=document.getElementById('livestatus');
+  const btn=document.getElementById('refreshbtn');
+  if(btn) btn.disabled=true;
+  statusEl.textContent='Обновление цен…';
+  const results={btc:null, sol:null, nvda:null, googl:null};
+  const errors=[];
+
+  // CoinGecko: BTC + SOL in one call, CORS-enabled, no proxy needed
+  try{
+    const r=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,solana&vs_currencies=usd');
+    if(!r.ok) throw new Error('coingecko http '+r.status);
+    const d=await r.json();
+    if(d?.bitcoin?.usd) results.btc=d.bitcoin.usd;
+    if(d?.solana?.usd) results.sol=d.solana.usd;
+    if(!results.btc||!results.sol) errors.push('CoinGecko: неполные данные');
+  }catch(e){ errors.push('BTC/SOL: '+e.message); }
+
+  // Yahoo Finance via CORS proxy, one at a time so one failure doesn't block the other
+  try{ results.nvda=await fetchYahooPrice('NVDA'); }catch(e){ errors.push('NVDA: '+e.message); }
+  try{ results.googl=await fetchYahooPrice('GOOGL'); }catch(e){ errors.push('GOOGL: '+e.message); }
+
+  if(results.btc) document.getElementById('p_btc').value=results.btc.toFixed(0);
+  if(results.sol) document.getElementById('p_sol').value=results.sol.toFixed(2);
+  if(results.nvda) document.getElementById('p_nvda').value=results.nvda.toFixed(2);
+  if(results.googl) document.getElementById('p_googl').value=results.googl.toFixed(2);
+
+  render();
+
+  const now=new Date();
+  const hh=String(now.getHours()).padStart(2,'0');
+  const mm=String(now.getMinutes()).padStart(2,'0');
+  if(errors.length===0){
+    statusEl.textContent='✅ Обновлено '+hh+':'+mm;
+  }else if(errors.length<4){
+    statusEl.textContent='⚠️ Частично обновлено '+hh+':'+mm+' ('+errors.join('; ')+')';
+  }else{
+    statusEl.textContent='⚠️ Не удалось обновить '+hh+':'+mm+' — правьте цены вручную';
+  }
+  if(btn) btn.disabled=false;
+}
+
+function render(){
+  // positions
+  let collat=0, riskVal=0, riskCost=0;
+  const cont=document.getElementById('poscards'); cont.innerHTML='';
+  POS.forEach(p=>{
+    const pr=getPrice(p.price);
+    const val=p.qty*pr, cost=p.qty*p.entry, pl=val-cost, plp=cost?pl/cost*100:0;
+    riskVal+=val; riskCost+=cost; if(p.collateral) collat+=val;
+    cont.innerHTML+=`<div class="card">
+      <div class="name">${p.name}<span class="tag">${p.place}</span></div>
+      <div class="val">${fmt2(val)}</div>
+      <div class="row"><span>${p.qty} @ вход ${fmt2(p.entry)}</span><b>${fmt2(pr)}</b></div>
+      <div class="row"><span>P&L</span><b class="${cls(pl)}">${fmt2(pl)} (${pct(plp)})</b></div>
+    </div>`;
+  });
+  document.getElementById('poscards').innerHTML+=`<div class="card" style="border-color:var(--red)">
+    <div class="name">Долг Kamino<span class="tag">debt</span></div>
+    <div class="val neg">−${fmt(DEBT)}</div>
+    <div class="row"><span>Ставка нетто</span><b>~1.82%/год</b></div>
+    <div class="row"><span>Статус</span><b>не погашен</b></div>
+  </div>`;
+
+  const networth = riskVal - DEBT;
+  const riskPL = riskVal - riskCost;
+  document.getElementById('networth').textContent=fmt2(networth);
+  document.getElementById('networthsub').innerHTML=`Активы под риском ${fmt(riskVal)} · долг −${fmt(DEBT)} · <span class="${cls(riskPL)}">P&L ${fmt2(riskPL)}</span>`;
+
+  // LTV
+  const ltv = collat? DEBT/collat*100 : 0;
+  document.getElementById('ltvval').textContent=ltv.toFixed(1)+'%';
+  document.getElementById('ltvmark').style.left=Math.min(ltv,100)+'%';
+  document.getElementById('ltvfill').style.width=(100-Math.min(ltv,100))+'%';
+  const st=document.getElementById('ltvstatus');
+  let stTxt,stCls;
+  if(ltv<50){stTxt='НОРМА';stCls='g';}
+  else if(ltv<55){stTxt='ВНИМАНИЕ';stCls='a';}
+  else if(ltv<60){stTxt='$50 USDC';stCls='a';}
+  else if(ltv<65){stTxt='$100 USDC';stCls='r';}
+  else{stTxt='ЗАКРЫТЬ';stCls='r';}
+  st.textContent=stTxt; st.className='pill '+stCls;
+
+  // SOL block
+  const solP=getPrice('p_sol');
+  document.getElementById('solnow').textContent=fmt2(solP);
+  document.getElementById('soldays').textContent=days('2026-09-02');
+  // market cards
+  document.getElementById('btcval').textContent=fmt(getPrice('p_btc'));
+  document.getElementById('solval2').textContent=fmt2(solP);
+  document.getElementById('nvdaval2').textContent=fmt2(getPrice('p_nvda'));
+  document.getElementById('googlval2').textContent=fmt2(getPrice('p_googl'));
+  // dates
+  document.getElementById('d_googl').textContent=days('2026-07-24')+' дн.';
+  document.getElementById('d_nvda').textContent=days('2026-08-27')+' дн.';
+  document.getElementById('d_sol').textContent=days('2026-09-02')+' дн.';
+
+  // alerts
+  const A=[];
+  if(ltv>=65) A.push(['crit','🔴',`LTV ${ltv.toFixed(1)}% — выше 65%. Срочно закрыть позицию и погасить весь долг.`]);
+  else if(ltv>=60) A.push(['crit','🟠',`LTV ${ltv.toFixed(1)}% — отправить $100 USDC, ничего не докупать.`]);
+  else if(ltv>=55) A.push(['','🟡',`LTV ${ltv.toFixed(1)}% — отправить $50 USDC на погашение.`]);
+  else if(ltv>=50) A.push(['','🟡',`LTV ${ltv.toFixed(1)}% — внимание, держать USDC наготове.`]);
+  else A.push(['ok','🟢',`LTV ${ltv.toFixed(1)}% — норма, действий не требуется.`]);
+
+  A.push(['','💡','Открытая рекомендация: погасить $148 долга Kamino при удобной возможности. Снимет плечо, остановит проценты и риск ликвидации. (Ты предпочитаешь гасить ростом SOL — напоминаю при ухудшении.)']);
+
+  if(solP<=80) A.push(['','📉',`SOL ~${fmt2(solP)} ниже $80 — мониторить плотнее. Критические уровни: $60 и $31.`]);
+  if(solP>=100&&solP<=150) A.push(['ok','🎯',`SOL в зоне $100–150 — окно для частичного гашения долга по плану.`]);
+  if(solP>=250) A.push(['ok','🚀',`SOL ≥ $250 — зона целей полного выхода.`]);
+
+  A.push(['','📅',`До разлока SOL ${days('2026-09-02')} дн. До отчёта NVDA Q2 ${days('2026-08-27')} дн. (главное событие).`]);
+  A.push(['','🔥','xPoints: не пропусти ежедневный стрик. HyENA: забрать USDe (программа кончается ~июнь).']);
+
+  document.getElementById('alerts').innerHTML=A.map(a=>`<div class="alert ${a[0]}"><span class="ic">${a[1]}</span><div>${a[2]}</div></div>`).join('');
+}
+document.querySelectorAll('.prices input').forEach(i=>i.addEventListener('input',render));
+render();
+window.addEventListener('load', fetchLivePrices);
+setInterval(fetchLivePrices, 5*60*1000);
+</script>
+</body>
+</html>
